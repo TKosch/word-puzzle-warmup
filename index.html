@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word Puzzle</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: sans-serif;
+      background: #f9f9f9;
+    }
+
+    #container {
+      text-align: center;
+      padding: 40px;
+      border: 2px solid #ccc;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+    }
+
+    .letter-button {
+      display: inline-block;
+      margin: 10px;
+      padding: 20px;
+      font-size: 32px;
+      border: 2px solid #333;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    .selected {
+      background-color: #cce5ff;
+      border-color: #0056b3;
+      pointer-events: none;
+    }
+
+    #timer {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    #progress {
+      margin: 10px;
+      font-size: 18px;
+    }
+
+    #word-display {
+      margin-top: 20px;
+      font-size: 24px;
+    }
+
+    #start-screen {
+      text-align: center;
+    }
+
+    #start-button {
+      font-size: 20px;
+      padding: 12px 24px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <div id="start-screen">
+    <h2>Word Puzzle Task</h2>
+    <p>You will see scrambled letters. Click them in the correct order to form a word.</p>
+    <button id="start-button">Start Task</button>
+  </div>
+
+  <div id="task-interface" style="display: none;">
+    <div id="timer">Time: 00:45</div>
+    <div id="progress"></div>
+    <div id="letters"></div>
+    <div id="word-display"></div>
+  </div>
+</div>
+
+<script>
+  let words = ['CLASH', 'DRINK', 'THIEF', 'DUNCE', 'CROWD', 'VAULT', 'KNIFE', 'TRUCK', 'GLOVE', 'BUNCH', 'WIDTH', 'FANCY', 'MONTH', 'GLINT', 'MERCY', 'WALTZ', 'HONEY', 'WOMAN', 'SCOUT', 'FIGHT'];
+  words = shuffle(words);
+
+  let trial = 0;
+  let selectedLetters = [];
+  let trialStartTime = null;
+  let results = [];
+  let timerInterval = null;
+  let timeLeft = 45;
+
+  const timerDisplay = document.getElementById("timer");
+  const letterDiv = document.getElementById("letters");
+  const display = document.getElementById("word-display");
+  const progress = document.getElementById("progress");
+  const startScreen = document.getElementById("start-screen");
+  const startButton = document.getElementById("start-button");
+  const taskInterface = document.getElementById("task-interface");
+
+  startButton.onclick = () => {
+    startScreen.style.display = "none";
+    taskInterface.style.display = "block";
+    showTrial();
+  };
+
+  function shuffle(array) {
+    let arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      let j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function formatTime(seconds) {
+    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function startTimer() {
+    timeLeft = 45;
+    timerDisplay.textContent = `Time: ${formatTime(timeLeft)}`;
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      timerDisplay.textContent = `Time: ${formatTime(timeLeft)}`;
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endTrial(false);
+      }
+    }, 1000);
+  }
+
+  function showTrial() {
+    selectedLetters = [];
+    display.textContent = "";
+    progress.textContent = `Trial ${trial + 1} of ${words.length}`;
+    trialStartTime = Date.now();
+    clearInterval(timerInterval);
+    startTimer();
+
+    const word = words[trial];
+    const shuffled = shuffle(word.split(""));
+    letterDiv.innerHTML = "";
+
+    shuffled.forEach((letter) => {
+      const btn = document.createElement("div");
+      btn.className = "letter-button";
+      btn.textContent = letter;
+
+      btn.onclick = () => {
+        if (selectedLetters.length < word.length) {
+          selectedLetters.push(letter);
+          btn.classList.add("selected");
+
+          if (selectedLetters.length === word.length) {
+            clearInterval(timerInterval);
+            endTrial(true);
+          }
+        }
+      };
+
+      letterDiv.appendChild(btn);
+    });
+  }
+
+  function endTrial(userFinished) {
+    const word = words[trial];
+    const userInput = selectedLetters.join('');
+    const correct = userInput === word;
+    const endTime = Date.now();
+    const reactionTime = endTime - trialStartTime;
+
+    results.push({
+      word,
+      input: userInput,
+      correct,
+      startTime: trialStartTime,
+      endTime: endTime,
+      reactionTime: reactionTime,
+      completed: userFinished
+    });
+
+    setTimeout(nextTrial, 300);
+  }
+
+  function nextTrial() {
+    trial++;
+    if (trial < words.length) {
+      showTrial();
+    } else {
+      endGame();
+    }
+  }
+
+  function endGame() {
+    clearInterval(timerInterval);
+    letterDiv.innerHTML = "";
+    display.innerHTML = "Finished! Thank you.";
+    progress.innerHTML = "";
+    timerDisplay.innerHTML = "";
+
+    window.parent.postMessage({
+      type: "word_puzzle_data",
+      payload: results
+    }, "*");
+  }
+</script>
+
+</body>
+</html>
