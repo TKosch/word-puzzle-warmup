@@ -43,7 +43,6 @@
     .selected {
       background-color: #cce5ff;
       border-color: #0056b3;
-      pointer-events: none;
     }
 
     #timer {
@@ -79,9 +78,11 @@
 <div id="container">
   <div id="start-screen">
     <h2>Word Puzzle Task Warmup</h2>
-    <p>This is a warmup. You will five scrambled letters of five words. Click them in the correct order to form a word.</p>
+    <p>This is a warmup. You will five scrambled letters of five words. Click them in the correct order to form a word.<br>You can unselect by clicking again.</p>
     <button id="start-button">Start Warmup Task</button>
   </div>
+
+  
 
   <div id="task-interface" style="display: none;">
     <div id="timer">Time: 00:45</div>
@@ -92,7 +93,6 @@
 </div>
 
 <script>
-  // let words = ['CLASH', 'DRINK', 'THIEF', 'DUNCE', 'CROWD', 'VAULT', 'KNIFE', 'TRUCK', 'GLOVE', 'BUNCH', 'WIDTH', 'FANCY', 'MONTH', 'GLINT', 'MERCY', 'WALTZ', 'HONEY', 'WOMAN', 'SCOUT', 'FIGHT'];
   let words = ['HOVEL', 'PLANK', 'PLUCK', 'UNITY', 'TOKEN'];
   words = shuffle(words);
 
@@ -157,20 +157,29 @@
     const shuffled = shuffle(word.split(""));
     letterDiv.innerHTML = "";
 
-    shuffled.forEach((letter) => {
+    shuffled.forEach((letter, index) => {
       const btn = document.createElement("div");
       btn.className = "letter-button";
       btn.textContent = letter;
 
       btn.onclick = () => {
-        if (selectedLetters.length < word.length) {
-          selectedLetters.push(letter);
-          btn.classList.add("selected");
+        const isSelected = btn.classList.contains("selected");
 
-          if (selectedLetters.length === word.length) {
-            clearInterval(timerInterval);
-            endTrial(true);
+        if (isSelected) {
+          // Deselect
+          btn.classList.remove("selected");
+          selectedLetters = selectedLetters.filter(item => item.button !== btn);
+        } else {
+          if (selectedLetters.length < word.length) {
+            btn.classList.add("selected");
+            selectedLetters.push({ letter, button: btn });
           }
+        }
+
+        // If 5 letters selected, end trial
+        if (selectedLetters.length === word.length) {
+          clearInterval(timerInterval);
+          endTrial(true);
         }
       };
 
@@ -180,10 +189,10 @@
 
   function endTrial(userFinished) {
     const word = words[trial];
-    const userInput = selectedLetters.join('');
-    const correct = userInput === word;
+    const userInput = selectedLetters.map(item => item.letter).join('');
     const endTime = Date.now();
     const reactionTime = endTime - trialStartTime;
+    const correct = userInput === word;
 
     results.push({
       word,
